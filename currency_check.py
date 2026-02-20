@@ -25,7 +25,7 @@ def send_email(rate):
 try:
     current_rate = get_exchange_rate()
     # 900원 이하일 때만 알림 (필요시 숫자 수정 가능)
-    if current_rate <= 900:
+    if current_rate <= 1100:
         send_email(current_rate)
         print(f"알림 발송 완료: {current_rate}")
     else:
