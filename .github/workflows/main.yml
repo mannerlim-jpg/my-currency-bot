@@ -5,56 +5,38 @@ on:
     - cron: '0 1 * * 1-5'
   workflow_dispatch:
 
-# 이슈 생성을 위해 권한 설정 추가
 permissions:
-  issues: write
   contents: write
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
-    
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # GitHub CLI 사용을 위한 토큰
-
     steps:
     - name: 체크아웃
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # 히스토리를 가져와야 덮어쓰기가 가능합니다.
 
-    - name: 파이썬 설정
+    - name: 파이썬 설정/실행
       uses: actions/setup-python@v5
       with:
         python-version: '3.10'
 
-    - name: 라이브러리 설치
-      run: pip install requests beautifulsoup4 pytz
-
-    - name: 환율 조회 스크립트 실행
-      run: python currency_check.py
-
-    - name: 1. 기존 환율 이슈 닫기 (Cleanup)
+    - name: 라이브러리 설치/실행
       run: |
-        # 'currency' 라벨이 붙은 열려있는 모든 이슈를 찾아 닫습니다.
-        OLD_ISSUES=$(gh issue list --label "currency" --state open --json number -q '.[].number')
-        for num in $OLD_ISSUES; do
-          gh issue close $num --comment "새로운 환율 정보가 업데이트되어 이전 이슈를 닫습니다."
-        done
+        pip install requests beautifulsoup4 pytz
+        python currency_check.py
 
-    - name: 2. 새 환율 이슈 생성 (구글 챗 알림 트리거)
-      run: |
-        # 파이썬이 만든 커밋 메시지 파일에서 제목 읽어오기
-        ISSUE_TITLE=$(cat commit_message.txt)
-        
-        # 새로운 이슈 생성 (라벨 'currency' 부여)
-        gh issue create --title "$ISSUE_TITLE" --body "자동 시스템에 의해 수집된 호주 환율 정보입니다." --label "currency"
-
-    - name: 3. 데이터 저장 (CSV 파일 업데이트)
+    - name: 강제 푸시 (저장소 클린 유지 + 짧은 알림)
       run: |
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        git add history.csv
         
-        # 커밋 메시지는 구글 챗에 알림이 가지 않도록 아주 짧고 단순하게 남깁니다.
-        git commit -m "Update history.csv" || echo "No changes to commit"
-        git push
+        git add history.csv commit_message.txt
+        COMMIT_MSG=$(cat commit_message.txt)
+        
+        # 마지막 커밋을 수정해서 덮어버립니다. (커밋이 쌓이지 않음)
+        git commit --amend -m "$COMMIT_MSG" || git commit -m "$COMMIT_MSG"
+        git push --force origin main
