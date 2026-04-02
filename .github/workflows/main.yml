@@ -9,6 +9,10 @@ jobs:
   run-bot:
     runs-on: ubuntu-latest
     
+    # 노란색 경고창(Node.js 20)을 없애기 위한 강제 엔진 설정 추가
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    
     steps:
     - name: 체크아웃
       uses: actions/checkout@v4
@@ -24,7 +28,7 @@ jobs:
     - name: 환율 조회 스크립트 실행
       run: python currency_check.py
 
-    - name: 깃허브에 결과 저장 및 커밋 푸시 (이 과정이 구글 챗 알림을 발생시킴)
+    - name: 깃허브에 결과 저장 및 커밋 푸시
       run: |
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
