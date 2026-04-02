@@ -5,14 +5,19 @@ on:
     - cron: '0 1 * * 1-5'
   workflow_dispatch:
 
+# 이슈 생성을 위해 권한 설정 추가
+permissions:
+  issues: write
+  contents: write
+
 jobs:
   run-bot:
     runs-on: ubuntu-latest
     
-    # 노란색 경고창(Node.js 20)을 없애기 위한 강제 엔진 설정 추가
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-    
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # GitHub CLI 사용을 위한 토큰
+
     steps:
     - name: 체크아웃
       uses: actions/checkout@v4
@@ -28,15 +33,28 @@ jobs:
     - name: 환율 조회 스크립트 실행
       run: python currency_check.py
 
-    - name: 깃허브에 결과 저장 및 커밋 푸시
+    - name: 1. 기존 환율 이슈 닫기 (Cleanup)
+      run: |
+        # 'currency' 라벨이 붙은 열려있는 모든 이슈를 찾아 닫습니다.
+        OLD_ISSUES=$(gh issue list --label "currency" --state open --json number -q '.[].number')
+        for num in $OLD_ISSUES; do
+          gh issue close $num --comment "새로운 환율 정보가 업데이트되어 이전 이슈를 닫습니다."
+        done
+
+    - name: 2. 새 환율 이슈 생성 (구글 챗 알림 트리거)
+      run: |
+        # 파이썬이 만든 커밋 메시지 파일에서 제목 읽어오기
+        ISSUE_TITLE=$(cat commit_message.txt)
+        
+        # 새로운 이슈 생성 (라벨 'currency' 부여)
+        gh issue create --title "$ISSUE_TITLE" --body "자동 시스템에 의해 수집된 호주 환율 정보입니다." --label "currency"
+
+    - name: 3. 데이터 저장 (CSV 파일 업데이트)
       run: |
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        git add history.csv commit_message.txt
+        git add history.csv
         
-        # 파이썬이 만든 커밋 메시지 읽어오기
-        COMMIT_MSG=$(cat commit_message.txt)
-        
-        # 해당 메시지를 제목으로 커밋 후 푸시
-        git commit -m "$COMMIT_MSG" || echo "변경된 내용이 없습니다."
+        # 커밋 메시지는 구글 챗에 알림이 가지 않도록 아주 짧고 단순하게 남깁니다.
+        git commit -m "Update history.csv" || echo "No changes to commit"
         git push
