@@ -17,19 +17,16 @@ history_file = 'history.csv'
 last_rate = None
 trend_msg = ""
 
-# 파일이 존재하면 열어서 가장 마지막 줄의 데이터를 가져옴
 if os.path.exists(history_file):
     with open(history_file, 'r', encoding='utf-8') as f:
         lines = f.readlines()
         if lines:
             try:
-                # 마지막 줄을 쉼표(,)로 쪼개서 두 번째 값(환율)을 추출
                 last_line = lines[-1].strip()
                 last_rate = float(last_line.split(',')[1])
             except (IndexError, ValueError):
-                pass # 파일 형식이 다르거나 첫 실행이라 비교할 숫자가 없으면 패스
+                pass
 
-# 변동 추이 텍스트 생성
 if last_rate is not None:
     diff = current_rate - last_rate
     if diff > 0:
@@ -45,17 +42,28 @@ elif current_rate <= 995: level = "🟡2단계 적극매수"
 elif current_rate <= 1015: level = "🟠1단계 주의/소액"
 else: level = "🔴관망"
 
-# 4. 깃허브 커밋 메시지용 텍스트 최종 결합
+# 4. 시간대 설정 (KST)
 kst = pytz.timezone('Asia/Seoul')
 now = datetime.datetime.now(kst).strftime('%m-%d %H:%M')
 
-# 조합 결과 예시: [04-02 13:39] 환율 1047.18원 (🔻2.50원 하락) / 🔴관망
-commit_msg = f"[{now}] 환율 {current_rate}원{trend_msg} / {level}"
-print(f"생성된 메시지: {commit_msg}")
+# 5. [핵심 수정항목] 커밋 메시지 제목과 본문(링크) 구성
+# 제목: 구글 챗 말풍선 제목에 표시됩니다.
+commit_title = f"[{now}] 환율 {current_rate}원{trend_msg} / {level}"
 
-# 5. 텍스트 파일 및 히스토리 CSV 업데이트
+# 본문: 제목 아래에 표시되며, 클릭 가능한 링크를 포함합니다.
+# 사용자님의 GitHub 저장소 경로(mannerlim-jpg/my-currency-bot)를 반영했습니다.
+csv_link = "👉 상세 기록 확인: https://github.com/mannerlim-jpg/my-currency-bot/blob/main/history.csv"
+
+# 제목과 본문을 결합 (빈 줄 '\n\n'이 매우 중요합니다)
+full_commit_message = f"{commit_title}\n\n{csv_link}"
+
+print(f"생성된 제목: {commit_title}")
+
+# 6. 텍스트 파일 및 히스토리 CSV 업데이트
+# 커밋 메시지용 파일에는 제목과 본문 전체를 씁니다.
 with open('commit_message.txt', 'w', encoding='utf-8') as f:
-    f.write(commit_msg)
+    f.write(full_commit_message)
 
+# 히스토리 파일에는 기존처럼 데이터만 추가합니다.
 with open(history_file, 'a', encoding='utf-8') as f:
     f.write(f"{now},{current_rate}\n")
