@@ -1,1 +1,3 @@
-[04-21 13:14] 환율 1054.34원 (🔻1.51원 하락) / 🔴관망
+[08-21 11:24] 환율 985.61원 (🔻6.58원 하락) / 🟡2단계 적극매수
+
+👉 상세 기록 확인: https://github.com/mannerlim-jpg/my-currency-bot/blob/main/history.csv
