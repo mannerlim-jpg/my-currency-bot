@@ -2,7 +2,6 @@ import os
 from datetime import datetime
 import pytz
 import requests
-from bs4 import BeautifulSoup
 
 # 1. Google Chat 웹훅 URL 로드
 GOOGLE_CHAT_WEBHOOK = (
@@ -12,52 +11,52 @@ GOOGLE_CHAT_WEBHOOK = (
     or os.environ.get("WEBHOOK_URL")
 )
 
-# 2. 네이버 금융 PC 웹페이지 스크래핑 (API 방식보다 차단 확률이 낮음)
-url = "https://finance.naver.com/marketindex/exchangeDetail.naver?marketindexCd=FX_AUDKRW"
+# 2. Yahoo Finance API 호출 (글로벌 서비스로 해외 IP 차단 없음)
+url = "https://query1.finance.yahoo.com/v8/finance/chart/AUDKRW=X"
 headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
 }
 
 response = requests.get(url, headers=headers)
 response.raise_for_status()
+data = response.json()
 
-# 3. HTML 파싱 및 데이터 추출
-soup = BeautifulSoup(response.text, 'html.parser')
-spot_con = soup.select_one('.spot .spt_con')
+# 3. 데이터 추출 (현재가 및 전일종가)
+try:
+    result = data['chart']['result'][0]['meta']
+    current_price = result['regularMarketPrice']
+    previous_close = result['chartPreviousClose']
+except (KeyError, IndexError, TypeError):
+    raise ValueError("Yahoo Finance에서 환율 정보를 파싱할 수 없습니다.")
 
-if not spot_con:
-    raise ValueError("환율 정보를 찾을 수 없습니다. (HTML 구조 변경 가능성)")
+change = current_price - previous_close
 
-current_price = spot_con.select_one('strong').text.strip()
-change_price = spot_con.select_one('em').text.strip()
-
-# 등락 기호 확인
-class_list = spot_con.get('class', [])
-if 'up' in class_list:
+# 4. 등락 기호 확인
+if change > 0:
     change_type = '상승'
-    sign = '[상승]'
-elif 'down' in class_list:
+    sign = '🔺'
+elif change < 0:
     change_type = '하락'
-    sign = '[하락]'
+    sign = '🔻'
 else:
     change_type = '보합'
-    sign = '[보합]'
+    sign = '➖'
 
 # 한국 시간 기준 타임스탬프
 kst = pytz.timezone("Asia/Seoul")
 now_kst = datetime.now(kst).strftime("%Y-%m-%d %H:%M")
 
-# 4. Google Chat 메시지 작성
+# 5. Google Chat 메시지 작성 (야후 파이낸스는 소수점까지 제공되므로 보기 좋게 포맷팅)
 message_text = (
     f"🇦🇺 [호주 달러(AUD) 환율 알림]\n"
     f"- 기준 시간: {now_kst}\n"
-    f"- 현재 환율: {current_price}원\n"
-    f"- 전일 대비: {sign} {change_type} {change_price}원"
+    f"- 현재 환율: {current_price:,.2f}원\n"
+    f"- 전일 대비: {sign} {change_type} {abs(change):,.2f}원"
 )
 
 print(message_text)
 
-# 5. Google Chat 웹훅 발송
+# 6. Google Chat 웹훅 발송
 if GOOGLE_CHAT_WEBHOOK:
     payload = {"text": message_text}
     res = requests.post(GOOGLE_CHAT_WEBHOOK, json=payload)
