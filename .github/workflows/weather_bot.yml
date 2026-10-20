@@ -1,0 +1,38 @@
+name: Bundang Weekly Weather
+
+on:
+  schedule:
+    # 매주 월요일 아침 7시 실행 (한국시간 기준. UTC로는 일요일 22시)
+    - cron: '0 22 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run-weather-bot:
+    runs-on: ubuntu-latest
+    steps:
+    - name: 저장소 체크아웃
+      uses: actions/checkout@v4
+
+    - name: 파이썬 환경 설정
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: 필요한 라이브러리 설치 및 스크립트 실행
+      run: |
+        pip install requests pytz
+        python weather_check.py
+
+    - name: 날씨 정보 커밋 및 푸시
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        
+        git add weather_commit_msg.txt
+        
+        # -F 옵션을 사용해 파일 내용 전체(제목+링크 본문)를 커밋 메시지로 사용합니다.
+        git commit --allow-empty -F weather_commit_msg.txt
+        git push origin main
