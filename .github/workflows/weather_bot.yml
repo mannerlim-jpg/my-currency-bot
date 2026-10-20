@@ -2,8 +2,8 @@ name: Bundang Weekly Weather
 
 on:
   schedule:
-    # 매주 월요일 아침 7시 실행 (한국시간 기준. UTC로는 일요일 22시)
-    - cron: '0 22 * * 0'
+    # 매주 월요일, 수요일 아침 8시 실행 (한국시간 기준. UTC로는 일요일(0), 화요일(2) 23시)
+    - cron: '0 23 * * 0,2'
   workflow_dispatch:
 
 permissions:
