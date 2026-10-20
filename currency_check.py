@@ -42,16 +42,14 @@ else:
     change_type = '보합'
     sign = '➖'
 
-# 한국 시간 기준 타임스탬프
+# 한국 시간 기준 타임스탬프 (월-일 시:분)
 kst = pytz.timezone("Asia/Seoul")
-now_kst = datetime.now(kst).strftime("%Y-%m-%d %H:%M")
+now_kst_short = datetime.now(kst).strftime("%m-%d %H:%M")
 
-# 5. Google Chat 메시지 작성 (야후 파이낸스는 소수점까지 제공되므로 보기 좋게 포맷팅)
+# 5. 스마트폰 푸시 알림에서 바로 보이도록 첫 줄에 핵심 내용 배치
 message_text = (
-    f"🇦🇺 [호주 달러(AUD) 환율 알림]\n"
-    f"- 기준 시간: {now_kst}\n"
-    f"- 현재 환율: {current_price:,.2f}원\n"
-    f"- 전일 대비: {sign} {change_type} {abs(change):,.2f}원"
+    f"🇦🇺 [{now_kst_short}] 환율 {current_price:,.2f}원 ({sign}{abs(change):,.2f}원)\n"
+    f"호주 달러(AUD) 알림이 도착했습니다."
 )
 
 print(message_text)
